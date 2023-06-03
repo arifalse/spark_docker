@@ -55,11 +55,55 @@ spark-create:
 	@docker-compose -f ./docker/docker-compose-spark.yml --env-file .env up -d
 	@echo '==========================================================='
 
+spark-produce:
+	@echo '__________________________________________________________'
+	@echo 'Producing fake events ...'
+	@echo '__________________________________________________________'
+	@docker exec ${DIBIMBING_DE_SPARK_MASTER_CONTAINER_NAME} \
+		python \
+		/challenge_spark/producer.py \
+
+spark-consume:
+	@echo '__________________________________________________________'
+	@echo 'Consuming fake events ...'
+	@echo '__________________________________________________________'
+	@docker exec ${DIBIMBING_DE_SPARK_MASTER_CONTAINER_NAME} \
+		spark-submit \
+		--master spark://${DIBIMBING_DE_SPARK_MASTER_HOST_NAME}:${DIBIMBING_DE_SPARK_MASTER_PORT} \
+		/challenge_spark/consumer.py \
+
 challenge-spark:
 	@docker exec ${DIBIMBING_DE_SPARK_MASTER_CONTAINER_NAME} \
 		spark-submit \
 		--master spark://${DIBIMBING_DE_SPARK_MASTER_HOST_NAME}:${DIBIMBING_DE_SPARK_MASTER_PORT} \
 		/challenge_spark/submission-test.py \
+
+kafka: kafka-create
+
+kafka-create:
+	@echo '__________________________________________________________'
+	@echo 'Creating Kafka Cluster ...'
+	@echo '__________________________________________________________'
+	@docker-compose -f ./docker/docker-compose-kafka.yml --env-file .env up -d
+	@echo 'Waiting for uptime...'
+	@sleep 20
+	@echo '==========================================================='
+
+kafka-create-test-topic:
+	@docker exec ${DIBIMBING_DE_KAFKA_CONTAINER_NAME} \
+		kafka-topics.sh --create \
+		--partitions 3 \
+		--replication-factor ${DIBIMBING_DE_KAFKA_REPLICATION} \
+		--bootstrap-server localhost:9092 \
+		--topic ${DIBIMBING_DE_KAFKA_TOPIC_NAME}
+
+kafka-create-topic:
+	@docker exec ${DIBIMBING_DE_KAFKA_CONTAINER_NAME} \
+		kafka-topics.sh --create \
+		--partitions ${partition} \
+		--replication-factor ${DIBIMBING_DE_KAFKA_REPLICATION} \
+		--bootstrap-server localhost:9092 \
+		--topic ${topic}
 
 clean:
 	@bash ./helper/goodnight.sh
